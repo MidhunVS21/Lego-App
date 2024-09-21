@@ -7,3 +7,5 @@ pillow
 numpy
 scipy
 matplotlib
+aiortc
+aioice
