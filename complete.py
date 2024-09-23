@@ -5,9 +5,10 @@ from PIL import Image
 from ultralytics import YOLO
 from streamlit_webrtc import VideoTransformerBase, webrtc_streamer
 import tempfile
+import os
 
 # Load YOLO model (YOLOv8)
-model = YOLO('./FinalTrained.pt')  # Update with your trained model path
+model = YOLO('./FinalCoShSi.pt')  # Update with your trained model path
 
 # YOLO detection function
 def detect_and_draw_boxes(image):
@@ -38,7 +39,7 @@ class YOLOVideoTransformer(VideoTransformerBase):
         return img
 
 # Streamlit App Interface
-st.title("LEGO Brick Detection with YOLO")
+st.title("LEGO Brick Detection")
 
 # Choose input format
 input_option = st.radio("Choose input format", ("Upload Image/Video", "Live Camera", "Capture from Camera"))
@@ -52,13 +53,39 @@ if input_option == "Upload Image/Video":
         if uploaded_image is not None:
             # Load the image and convert it to numpy array
             image = Image.open(uploaded_image)
-            frame = np.array(image)
+            st.image(image, caption='Uploaded Image', use_column_width=True)
 
-            # Run YOLO object detection
-            frame = detect_and_draw_boxes(frame)
+            # Save the uploaded image to a temporary file
+            with tempfile.NamedTemporaryFile(delete=False, suffix=".jpg") as temp_file:
+                image.save(temp_file.name)
+                temp_file_path = temp_file.name
 
-            # Display the image with bounding boxes
-            st.image(frame, caption="Detected LEGO Bricks", use_column_width=True)
+            # Run YOLO prediction using the saved image file
+            results = model.predict(source=temp_file_path, save=True)
+            output_image_path = os.path.join(results[0].save_dir, os.path.basename(temp_file_path))
+            output_image = Image.open(output_image_path)
+
+            # Display prediction results
+            st.subheader('Predicted LEGO Bricks')
+            st.image(output_image, caption='Predicted Bricks', use_column_width=True)
+
+            # Extracting color and size from the results
+            num_bricks = len(results[0].boxes)
+            brick_details = []
+
+            for box in results[0].boxes:
+                # Convert label tensor to string and extract color and size
+                label = model.names[int(box.cls)]  # Convert the class index to its string label
+                color, shape, size = label.split("_")  # Split the label into color and size
+                brick_details.append({'color': color, 'shape': shape, 'size': size})
+
+            st.write(f'Number of Bricks: {num_bricks}')
+            st.write('Brick Details:')
+            for brick in brick_details:
+                st.write(f'COLOR: {brick["color"]},  SHAPE: {brick["shape"]},  SIZE: {brick["size"]}')
+
+            # Clean up the temporary file
+            os.remove(temp_file_path)
 
     elif upload_option == "Video":
         uploaded_video = st.file_uploader("Choose a video...", type=["mp4", "mov", "avi"])
@@ -95,10 +122,37 @@ elif input_option == "Capture from Camera":
     if camera_image is not None:
         # Convert the image to numpy array
         img = Image.open(camera_image)
-        frame = np.array(img)
 
-        # Run YOLO object detection on the captured image
-        frame = detect_and_draw_boxes(frame)
+        #st.image(camera_image, caption='Uploaded Image', use_column_width=True)
 
-        # Display the captured image with bounding boxes
-        st.image(frame, caption="Detected LEGO Bricks", use_column_width=True)
+        # Save the uploaded image to a temporary file
+        with tempfile.NamedTemporaryFile(delete=False, suffix=".jpg") as temp_file:
+            img.save(temp_file.name)
+            temp_file_path = temp_file.name
+
+        # Run YOLO prediction using the saved image file
+        results = model.predict(source=temp_file_path, save=True)
+        output_image_path = os.path.join(results[0].save_dir, os.path.basename(temp_file_path))
+        output_image = Image.open(output_image_path)
+
+        # Display prediction results
+        st.subheader('Predicted LEGO Bricks')
+        st.image(output_image, caption='Predicted Bricks', use_column_width=True)
+
+        # Extracting color and size from the results
+        num_bricks = len(results[0].boxes)
+        brick_details = []
+
+        for box in results[0].boxes:
+            # Convert label tensor to string and extract color and size
+            label = model.names[int(box.cls)]  # Convert the class index to its string label
+            color, shape, size = label.split("_")  # Split the label into color and size
+            brick_details.append({'color': color, 'shape': shape, 'size': size})
+
+        st.write(f'Number of Bricks: {num_bricks}')
+        st.write('Brick Details:')
+        for brick in brick_details:
+            st.write(f'COLOR: {brick["color"]},  SHAPE: {brick["shape"]},  SIZE: {brick["size"]}')
+
+        # Clean up the temporary file
+        os.remove(temp_file_path)
