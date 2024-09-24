@@ -8,7 +8,7 @@ import tempfile
 import os
 
 # Load YOLO model (YOLOv8)
-model = YOLO('./FinalCoShSi.pt')  # Update with your trained model path
+model = YOLO('./FinalCoShSi.pt')
 
 # YOLO detection function
 def detect_and_draw_boxes(image):
@@ -45,15 +45,17 @@ st.title("LEGO Brick Detection")
 input_option = st.radio("Choose input format", ("Upload Image/Video", "Live Camera", "Capture from Camera"))
 
 if input_option == "Upload Image/Video":
-    # Upload option selection (Image or Video)
     upload_option = st.radio("Upload Image or Video", ("Image", "Video"))
 
     if upload_option == "Image":
         uploaded_image = st.file_uploader("Choose an image...", type=["jpg", "jpeg", "png"])
         if uploaded_image is not None:
-            # Load the image and convert it to numpy array
             image = Image.open(uploaded_image)
             st.image(image, caption='Uploaded Image', use_column_width=True)
+
+            # Convert the image to RGB mode if it's in RGBA (PNG with alpha channel)
+            if image.mode == 'RGBA':
+                image = image.convert('RGB')
 
             # Save the uploaded image to a temporary file
             with tempfile.NamedTemporaryFile(delete=False, suffix=".jpg") as temp_file:
@@ -74,9 +76,8 @@ if input_option == "Upload Image/Video":
             brick_details = []
 
             for box in results[0].boxes:
-                # Convert label tensor to string and extract color and size
-                label = model.names[int(box.cls)]  # Convert the class index to its string label
-                color, shape, size = label.split("_")  # Split the label into color and size
+                label = model.names[int(box.cls)]
+                color, shape, size = label.split("_")
                 brick_details.append({'color': color, 'shape': shape, 'size': size})
 
             st.write(f'Number of Bricks: {num_bricks}')
@@ -120,10 +121,7 @@ elif input_option == "Capture from Camera":
     camera_image = st.camera_input("Take a picture")
 
     if camera_image is not None:
-        # Convert the image to numpy array
         img = Image.open(camera_image)
-
-        #st.image(camera_image, caption='Uploaded Image', use_column_width=True)
 
         # Save the uploaded image to a temporary file
         with tempfile.NamedTemporaryFile(delete=False, suffix=".jpg") as temp_file:
@@ -144,9 +142,8 @@ elif input_option == "Capture from Camera":
         brick_details = []
 
         for box in results[0].boxes:
-            # Convert label tensor to string and extract color and size
-            label = model.names[int(box.cls)]  # Convert the class index to its string label
-            color, shape, size = label.split("_")  # Split the label into color and size
+            label = model.names[int(box.cls)]
+            color, shape, size = label.split("_")
             brick_details.append({'color': color, 'shape': shape, 'size': size})
 
         st.write(f'Number of Bricks: {num_bricks}')
